@@ -1,0 +1,14 @@
+\off;\standby;``ACC Active'' button pressed;6.1
+Any state - {\off};\off	;``ACC Active'' button unpressed;6.1
+\standby;\following, \speedcontrol, \hold;``ACC'' button pressed;6.1
+\following, \speedcontrol, \hold;\error;Error Occurs;6.6
+\following, \speedcontrol, \hold;\override;Driver Gas Power $>$ Car Gas Power;6.3.1.4
+\following, \speedcontrol, \hold;\standby;``ACC'' button pressed;6.1
+\following, \speedcontrol, \hold;\standby;Driver Brake Power $>$ Car Brake Power;6.3.1.2
+\error;\off;User input: press ``ACC Active'' button;6.6
+\following;\hold;Car has come to stop for some t $<$ 3 seconds;6.1
+\following ;\speedcontrol;SS $<$ CMS;6.1
+\speedcontrol;\following ;CMS $<$ SS;6.1
+\override;\following, \speedcontrol, \hold;Driver Gas Power $<$ Car Gas Power;6.3.1.4
+\hold;\following, \speedcontrol;Automatic;6.2.4
+\hold;\following, \speedcontrol;Driver Request;6.2.4
