@@ -1,0 +1,3 @@
+#ignore all pycharm files
+*.pyc
+*.xml

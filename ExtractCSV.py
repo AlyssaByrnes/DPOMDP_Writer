@@ -1,6 +1,8 @@
 import csv
 
 def latex_to_table(filename):
+    #stores events as [start states], [next states], ['event', event type]
+    #stores actions as [start states], [next states], ['human/machine', movement action (if applicable), communication action (if applicable)]
     with open(filename) as csvfile:
         table = []
         reader = csv.reader(csvfile, delimiter=";")
@@ -8,17 +10,24 @@ def latex_to_table(filename):
             #print(row)
             [start,next,cause] = row
             cause = cause.split(",")
-            if len(cause)==1:
+            #print(cause)
+            if len(cause)==2:
+                event = cause[1]
+                entry = ["event",event]
+            else:
                 cause = cause[0].split("_")
                 if cause[0] == "human":
                     human_action = cause[1]
-                    machine_action = ""
+                    if human_action == ("pushbutton"):
+                        entry = ["human","", human_action]
+                    else:
+                        entry = ["human", human_action, ""]
                 elif cause[0] == "machine":
                     machine_action = cause[1]
-                    human_action = "none"
-                new_row = [start.split(","), next.split(","), machine_action, human_action]
-                #print(new_row)
-                table.append(new_row)
+                    entry = ["machine",machine_action, ""]
+            new_row = [start.split(","), next.split(","), entry]
+            #print(new_row)
+            table.append(new_row)
         return table
 
 
@@ -26,16 +35,7 @@ def latex_to_table(filename):
 
 filename = 'FSRATransitionTable.csv'
 
-with open(filename) as csvfile:
-    table = ""
-    reader = csv.reader(csvfile, delimiter=";")
-    for row in reader:
-        #print(row)
-        [start,next,condition,spec] = row
-        table_row = str(start) + " & "
-        table_row += str(next) + " & "
-        table_row += condition + " \\\\" + "\n"
-        table += table_row
-    #print(table)
 
-#print(latex_to_table("TransitionLatexClean.csv"))
+table = latex_to_table("TransitionLatexClean.csv")
+for row in table:
+    print(row)

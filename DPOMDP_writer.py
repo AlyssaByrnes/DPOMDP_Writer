@@ -102,8 +102,8 @@ class DPOMDPWriter:
         next_state = self.decpomdp.transition(start_state,hum_action,mach_action)
         return self.get_cost(next_state,hum_action,mach_action)
 
-
     def get_transition_strings(self, state, human_action, machine_action):
+        #Gets Transition strings for the LARGE ACC Model
         #T: right right : loc23-rmap2-ctrlM : loc23-rmap1-ctrlM : .1
         transition_list = []
         prefix = "T: " + self.action_to_str(human_action) + " " + self.action_to_str(machine_action) + " : "
