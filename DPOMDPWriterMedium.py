@@ -98,7 +98,7 @@ class DPOMDPWriterMedACC:
         if hum_mvmt != "none":
             cost += self.costs["human movement"]
         # cost for unsafe state
-        if ~safety:
+        if safety == False:
             cost += self.costs["unsafe"]
         # cost of machine updating the interface
         if mach_comm == "communicate":
@@ -124,14 +124,37 @@ class DPOMDPWriterMedACC:
             human_obs = "none"
         return [human_obs, machine_obs]
 
+    def has_array_match(self, array1, array2):
+        #just a helper method for the following method
+        [comp1, comp2] = array2
+        for elem in array1:
+            [temp1, temp2] = elem
+            if (temp1 == comp1) & (temp2 == comp2):
+                return True
+        return False
+
     def get_observation_string(self, start_state, human_action, machine_action):
         #sample string: O: right comm : loc31-rmap2-ctrlH : obs2 obs2: 1
-        obs_str = "O: " + self.action_to_str(human_action) + " " + self.action_to_str(machine_action) + " : "
+        obs_str = ""
+        prefix = "O: " + self.action_to_str(human_action) + " " + self.action_to_str(machine_action) + " : "
+        prefix += self.state_to_str(start_state) + " : "
         transitions = self.get_possible_transitions(start_state, human_action, machine_action)
-        for t in transitions:
-            [cause, next_state] = t
+        if len(transitions) == 0:
+            #state stays the same
+            next_state = start_state
             [human_obs, machine_obs] = self.get_observation(next_state,human_action,machine_action)
-            obs_str += self.state_to_str(start_state) + " : " + human_obs + " " + machine_obs + " : 1\n"
+            obs_str += prefix + self.state_to_str(next_state) + " : " + human_obs + " " + machine_obs + " : 1\n"
+        else:
+            explored_transitions = []
+            for t in transitions:
+                [cause, next_state] = t
+                start_end_pair = [start_state, next_state]
+                #this check prevents repeats if multiples of the same transition can happen from different causes
+                check = self.has_array_match(explored_transitions,start_end_pair)
+                if (check == False):
+                    explored_transitions.append(start_end_pair)
+                    [human_obs, machine_obs] = self.get_observation(next_state,human_action,machine_action)
+                    obs_str += prefix + self.state_to_str(next_state) + " : " + human_obs + " " + machine_obs + " : 1\n"
         return obs_str
 
 
@@ -146,7 +169,7 @@ class DPOMDPWriterMedACC:
 
     def get_possible_transitions(self, start_state, hum_action, mach_action):
         #returns a list of transitions of the form [cause, end_state]
-        print("start state: " + self.state_to_str(start_state) + "actions: " + self.action_to_str(hum_action) + " " + self.action_to_str(mach_action))
+        #print("start state: " + self.state_to_str(start_state) + "actions: " + self.action_to_str(hum_action) + " " + self.action_to_str(mach_action))
         transitions = []
         [hum_phys, hum_comm] = hum_action
         [mach_phys, mach_comm] = mach_action
@@ -170,7 +193,7 @@ class DPOMDPWriterMedACC:
                             for end_state in ends:
                                 trans = [[cause, end_state]]
                                 transitions += trans
-        print("TRANSITIONS:" + str(transitions))
+        #print("TRANSITIONS:" + str(transitions))
         return transitions
                                             
 
@@ -188,18 +211,18 @@ class DPOMDPWriterMedACC:
 
         possible_transitions = self.get_possible_transitions(state, human_action, machine_action)
         if len(possible_transitions)>0:
-            num_transitions = len(possible_transitions)
-            remaining_prob = 1/num_transitions
+            num_transitions = float(len(possible_transitions))
+            remaining_prob = float(1/num_transitions)
             if (state == "following")|(state == "speedcontrol")|(state=="hold"):
-                prob_error = p_error/num_transitions
+                prob_error = float(p_error/num_transitions)
                 num_transitions = num_transitions - 1
                 if num_transitions > 0:
-                    remaining_prob = (1 - prob_error)/num_transitions
+                    remaining_prob = float((1 - prob_error)/num_transitions)
             if state == "hold":
                 prob_hold = p_hold_exit/num_transitions
                 num_transitions = num_transitions - 1
                 if num_transitions > 0:
-                    remaining_prob = (1 - prob_hold - prob_error)/num_transitions
+                    remaining_prob = float((1 - prob_hold - prob_error)/num_transitions)
             for transition in possible_transitions:
                 [cause, end_state] = transition
                 if cause[1] == "error":
@@ -248,7 +271,7 @@ class DPOMDPWriterMedACC:
         file_data += transitions
         file_data += observations
         file_data += rewards
-        print(file_data)
+        #print(file_data)
         f = open(filename, "w")
         f.writelines(file_data)
         f.close()
