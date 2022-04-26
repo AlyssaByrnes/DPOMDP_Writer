@@ -247,7 +247,7 @@ class DecPOMDP_medium:
 
 
     def check_in_row(self,row, mode, human_action, machine_action):
-        [start_mode, next_mode, machine_act, human_act] = row
+        [start_mode, next_mode, transition_cause] = row
         if mode in start_mode:
             if (human_action == human_act) | (machine_action == machine_act):
                 return [True, next_mode]

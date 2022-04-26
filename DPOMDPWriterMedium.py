@@ -1,12 +1,14 @@
 
 import itertools
 import copy
-from help_methods import *
+#from help_methods import *
 from ExtractCSV import latex_to_table
+
+
 
 mode_change_table = latex_to_table("TransitionLatexClean.csv")
 
-class DPOMDPWriterMedACC:
+class DPOMDPWriterACC:
 
     def __init__(self,mach_comm_acts, mach_move_acts,hum_comm_acts,hum_move_acts,modes,prob_dict,cost_dict, scenario_number, human_observations, machine_observations):
         #since this is medium, there is only 1 scenario
@@ -168,8 +170,7 @@ class DPOMDPWriterMedACC:
         return self.decpomdp.get_cost(next_state,hum_action,mach_action)
 
     def get_possible_transitions(self, start_state, hum_action, mach_action):
-        #returns a list of transitions of the form [cause, end_state]
-        #print("start state: " + self.state_to_str(start_state) + "actions: " + self.action_to_str(hum_action) + " " + self.action_to_str(mach_action))
+        #gives set of possible end states and the cause for those transitions
         transitions = []
         [hum_phys, hum_comm] = hum_action
         [mach_phys, mach_comm] = mach_action
@@ -195,6 +196,76 @@ class DPOMDPWriterMedACC:
                                 transitions += trans
         #print("TRANSITIONS:" + str(transitions))
         return transitions
+
+    def combine_duplicate_transitions(self, trans_table):
+        #combines probabilities for transitions that end up in the same next-state
+        
+        prelen = len(trans_table)
+        return_table = []
+        
+        while len(trans_table)>1:
+            flag = True 
+            j = 1
+            while j < len(trans_table):
+                if trans_table[0][0] == trans_table[j][0]:
+                    #print("Duplicate Found")
+                    flag = False
+                    return_table += [[trans_table[0][0], trans_table[0][1]+trans_table[j][1]]]
+                    trans_table.remove(trans_table[j])
+                else:
+                    j += 1
+            if flag:
+                return_table += [trans_table[0]]
+            trans_table.remove(trans_table[0])
+            if trans_table is None:
+                trans_table = []
+        return_table += trans_table
+        return return_table
+            
+
+    def get_transition_table(self, state, human_action, machine_action):
+        #Gets table of possible next states and their probability
+        #[[state1,p1], [state2,p2],...]
+        transition_table = []
+        p_error = float(self.prob_dict["error"])
+        p_hold_exit = float(self.prob_dict["exithold"])
+
+        possible_transitions = self.get_possible_transitions(state, human_action, machine_action)
+        if len(possible_transitions)>0:
+            num_transitions = len(possible_transitions)
+            remaining_prob = float(1/num_transitions)
+            if (state == "following")|(state == "speedcontrol")|(state=="hold"):
+                prob_error = float(p_error/num_transitions)
+                num_transitions = num_transitions - 1
+                if num_transitions > 0:
+                    remaining_prob = float((1 - prob_error)/num_transitions)
+                else:
+                    remaining_prob = float((1 - prob_error))
+            if state == "hold":
+                prob_hold = p_hold_exit/num_transitions
+                num_transitions = num_transitions - 1
+                if num_transitions > 0:
+                    remaining_prob = float((1 - prob_hold - prob_error)/num_transitions)
+                else: 
+                    remaining_prob = float((1 - prob_hold - prob_error))
+            if num_transitions == 0:
+                #state stays the same unless there's an event
+                trans_line = [[state, remaining_prob]]
+                transition_table += trans_line
+            for transition in possible_transitions:
+                [cause, end_state] = transition
+                if cause[1] == "error":
+                    trans_line = [[end_state, prob_error] ]
+                elif cause[1] == "exit": 
+                    trans_line = [[end_state, prob_hold]]
+                else:
+                    trans_line = [[end_state, remaining_prob]]
+                transition_table += trans_line
+        else:
+            #state stays the same
+            trans_line = [[state,float(1)]]
+            transition_table += trans_line
+        return self.combine_duplicate_transitions(transition_table)
                                             
 
 
@@ -206,35 +277,10 @@ class DPOMDPWriterMedACC:
         transition_list = []
         prefix = "T: " + self.action_to_str(human_action) + " " + self.action_to_str(machine_action) + " : "
         prefix += self.state_to_str(state) + " : "
-        p_error = self.prob_dict["error"]
-        p_hold_exit = self.prob_dict["exithold"]
-
-        possible_transitions = self.get_possible_transitions(state, human_action, machine_action)
-        if len(possible_transitions)>0:
-            num_transitions = float(len(possible_transitions))
-            remaining_prob = float(1/num_transitions)
-            if (state == "following")|(state == "speedcontrol")|(state=="hold"):
-                prob_error = float(p_error/num_transitions)
-                num_transitions = num_transitions - 1
-                if num_transitions > 0:
-                    remaining_prob = float((1 - prob_error)/num_transitions)
-            if state == "hold":
-                prob_hold = p_hold_exit/num_transitions
-                num_transitions = num_transitions - 1
-                if num_transitions > 0:
-                    remaining_prob = float((1 - prob_hold - prob_error)/num_transitions)
-            for transition in possible_transitions:
-                [cause, end_state] = transition
-                if cause[1] == "error":
-                    trans_line = prefix +  " : " + self.state_to_str(end_state) + " : " + str(prob_error) + "\n"
-                elif cause[1] == "exit": 
-                    trans_line = prefix +  " : " + self.state_to_str(end_state) + " : " + str(prob_hold) + "\n"
-                else:
-                    trans_line = prefix +   " : " + self.state_to_str(end_state) + " : " + str(remaining_prob) + "\n"
-                transition_list += trans_line
-        else:
-            trans_line = trans_line = prefix +  " : " + state + " : 1 \n"
-            transition_list += trans_line
+        transition_table = self.get_transition_table(state, human_action, machine_action)
+        for elem in transition_table:
+            [end_state, prob] = elem
+            transition_list += prefix +  " : " + self.state_to_str(end_state) + " : " + str(prob) + "\n"
         return transition_list
         
 
@@ -253,6 +299,19 @@ class DPOMDPWriterMedACC:
                     rewards.append(self.get_reward_string(state,h_action,m_action))
         return [transitions, observations, rewards]
 
+    def make_decpomdp(self, start_state):
+        [transitions, observations, rewards] = self.get_transitions()
+        t_string = ''.join(transitions)
+        #t_string = t_string.replace(' ', '')
+        t_string = t_string.split("\n")
+        for elem in t_string:
+            t_list = elem.split(':')
+            if len(t_list) >= 6:
+                actions = t_list[1].split(' ')
+                entry = [actions[1].split("-"), actions[2].split("-"), t_list[2].replace(' ',''), t_list[4].replace(' ',''), float(t_list[5])]
+                print(entry)
+
+    
     def write_to_file(self, filename, start_state):
         file_data = []
         file_data.append("agents: 2" + "\n")

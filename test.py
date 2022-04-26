@@ -1,5 +1,5 @@
 import itertools
-from DPOMDPWriterMedium import DPOMDPWriterMedACC
+from DPOMDPWriterMedium import DPOMDPWriterACC
 #from help_methods import *
 
 modes = ["standby", "following", "speedcontrol", "hold", "override", "error"]
@@ -32,7 +32,7 @@ comm_cost = -1
 cost_dict = {"human movement":human_movement_cost, "unsafe": unsafe_cost, "machine communication": comm_cost}
 
 
-writer = DPOMDPWriterMedACC(machine_comm_actions, machine_mvmt_actions, human_comm_actions, human_mvmt_actions, modes,prob_dict,cost_dict,1, human_observations, machine_observations)
+writer = DPOMDPWriterACC(machine_comm_actions, machine_mvmt_actions, human_comm_actions, human_mvmt_actions, modes,prob_dict,cost_dict,1, human_observations, machine_observations)
 
 file_name = "ACC.dpomdp"
 test_state = states[0]
